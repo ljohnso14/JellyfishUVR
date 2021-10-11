@@ -18,15 +18,9 @@
 
 ## Importing data ##
 
-getwd()
-setwd("C:/Users/laure/OneDrive/Documents/JellyPolypUVPaper/data")
-
-# data where the controls are separated based on AA, BB, and AB treatments 
-# df <- read.csv("polypclonedata.csv", stringsAsFactors = F)
 
 # data where all the controls are combined into one group 
 df.combinedcontrol <- read.csv("polypclonedata_combinedcontrol.csv", stringsAsFactors = F)
-
 
 
 ## Organizng data ##
