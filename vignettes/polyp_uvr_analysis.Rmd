@@ -1,0 +1,171 @@
+---
+title: "REU_UVR_Polyp"
+author: "Lauren E Johnson"
+date: "06/1/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### **UVR consequences on polyp reproduction**  
+**Importing and tidying asexual reproduction data**  
+
+1. Importing data. 
+```{r}
+# data where all the controls are combined into one group 
+df.combinedcontrol <- read.csv(here::here("data_raw/polypclonedata_combinedcontrol.csv"), stringsAsFactors = F)
+```
+
+2. Add column with final polyp numbers 
+```{r message=FALSE, warning=FALSE}
+df.combinedcontrol$FinalPolyp <- df.combinedcontrol$Day_27
+```
+
+3. Calculate daily and weekly budding rates
+```{r}
+# daily budding rate for experiment
+df.combinedcontrol$DBR <- ((df.combinedcontrol$FinalPolyp - df.combinedcontrol$Day_00)/27)
+# weekly budding rate for experiment
+df.combinedcontrol$WBR <- (((df.combinedcontrol$FinalPolyp - df.combinedcontrol$Day_00)/27)*7)
+```
+
+4. Reorganize/Reformat the data frame 
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(tidyverse)
+```
+
+```{r}
+# long format 
+df.combinedcontrol.gather <- df.combinedcontrol %>% gather(key = "Time", value = "Polyps", Day_00:Day_27)
+
+# separate the days of experiment out and only keep the number of the day
+df <- separate(data = df.combinedcontrol.gather, col = Time, into = c(NA,'Day'), sep = '_')
+
+# reformat number of day to integer
+df$Day <- as.integer(df$Day)
+
+knitr::kable(head(df))
+
+```
+
+
+**Data analysis**  
+
+We compared differences in weekly budding rate among the UVR treatment groups using a one-way ANOVA with treatment as the main effect.  
+
+```{r}
+wbraov <- aov(WBR~Treatment, data = df.combinedcontrol)
+
+summary(wbraov)
+```
+
+A post-hoc Tukey test was used when significant differences were detected.   
+```{r}
+TukeyHSD(wbraov)
+```
+  
+### **UVR consequences on polyp health**  
+**Creating table of detachment data** 
+
+Polyp detachment was classified binomially as either yes (polyps in dish detached at > 1 timepoints) or no (polyps in dish detached at ≤ 1 timepoints).  
+```{r}
+D <- as.table(rbind(c(11,7), c(11,1), c(4,8), c(0,12)))
+
+dimnames(D) <- list(treatment = c("Control", "AA", "BB", "AB"), status = c("Attached", "Detached"))
+
+knitr::kable(D)
+```
+
+**Data analysis**    
+
+Chi-squared test of independence to test whether there were non-random differences in detachment probabilities across the treatment groups.  
+```{r message=FALSE, warning=FALSE}
+library(chisq.posthoc.test)
+
+chisq.test(D, correct = F)
+
+```
+
+Post-Hoc Comparisons  
+  
+6 comparisons so alpha is 0.05/6 = 0.0083  
+Comparison is bolded if p value is significant  
+
+Control vs AA  
+```{r warning=FALSE}
+chisq.test(D[c(1,2),], correct = F)
+```
+
+Control vs BB  
+```{r}
+chisq.test(D[c(1,3),], correct = F)
+```
+
+**Control vs AB**  
+```{r warning=FALSE}
+chisq.test(D[c(1,4),], correct = F)
+```
+
+**AA vs BB**  
+```{r warning=FALSE}
+chisq.test(D[c(2,3),], correct = F)
+```
+
+**AA vs AB**  
+```{r}
+chisq.test(D[c(2,4),], correct = F)
+```
+
+BB vs AB  
+```{r warning=FALSE}
+chisq.test(D[c(3,4),], correct = F)
+```
+
+
+```
+
+### **Figures**  
+**Fig 1A.** Total number of polyps observed (mean +/- s.e.) under each UV treatment over the 27-day experiment.   
+```{r, echo=FALSE}
+
+library(ggridges)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(forcats)
+library(ggpubr)
+
+
+ggline(df, x = "Day", y = "Polyps", 
+       combine = T,
+       color = "Treatment",
+       add = c("mean_se"),
+       add.params = list(),
+       ylab = expression("Number of polyps (mean ± s.e.)"),
+       xlab = "Day of Experiment",
+       shape = "Treatment",
+       size = .3,
+       font.label = list(size = 30, color = "black"),
+       ggtheme = theme_classic()) + scale_color_grey()
+
+```
+  
+**Fig 1B.** Weekly budding rates (polyps/week) for each UV treatment. Lowercase letters (a, b, c) indicate signficant differences (p < 0.5) between groups.   
+```{r, echo=FALSE}
+# using df.combined control otherwise will have 27 points for each rate
+ggplot(data = df.combinedcontrol, aes(x = Treatment, y = WBR)) +
+  #stat_boxplot(geom = "errorbar", width = 0.2, show.legend = F) +
+  geom_boxplot(color = "black", size = .3, show.legend = F, outlier.colour = NA, position=position_dodge(width = 2)) +
+  geom_jitter(alpha = 0.5, width = 0.05, size = .75, color = "black", show.legend = F) +
+  stat_summary(fun=mean, geom="point", color = "black", shape = 4, show.legend = F) +
+  ylab('Weekly Buddling Rate') +
+  theme_classic() 
+
+
+
+```
+
+
+
