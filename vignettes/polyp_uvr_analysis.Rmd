@@ -12,6 +12,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ### **UVR consequences on polyp reproduction**  
 **Importing and tidying asexual reproduction data**  
 
+Reproduction Results 
+1. One-way ANOVA (parametric); Tukey Post-Hoc
+2. Two-way ANOVA (parametric); Tukey Post-Hoc
+3. Kruskall-Wallace (non-parametric); Pairwise Wilcox Test
+
+Detachment Results
+1. Chi-squaredtest of independence 
+
+
 1. Importing data. 
 ```{r}
 # data where all the controls are combined into one group 
@@ -123,9 +132,6 @@ BB vs AB
 chisq.test(D[c(3,4),], correct = F)
 ```
 
-
-```
-
 ### **Figures**  
 **Fig 1A.** Total number of polyps observed (mean +/- s.e.) under each UV treatment over the 27-day experiment.   
 ```{r, echo=FALSE}
@@ -168,4 +174,106 @@ ggplot(data = df.combinedcontrol, aes(x = Treatment, y = WBR)) +
 ```
 
 
+
+### **Data Analysis in Response to Reviewers**
+1. Importing data. Added UVA and UVB column independently. '1' indicates presence of that wavelength and '0' indicates absence. 
+```{r}
+# data where all the controls are combined into one group 
+df <- read.csv(here::here("data_raw/polypclonedata_combinedcontrol_v2.csv"), stringsAsFactors = F)
+```
+
+2. Add column with final polyp numbers 
+```{r message=FALSE, warning=FALSE}
+df$FinalPolyp <- df$Day_27
+```
+
+3. Calculate daily and weekly budding rates
+```{r}
+# daily budding rate for experiment
+df$DBR <- ((df$FinalPolyp - df$Day_00)/27)
+# weekly budding rate for experiment
+df$WBR <- (((df$FinalPolyp - df$Day_00)/27)*7)
+```
+
+4. Reorganize/Reformat the data frame 
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(tidyverse)
+```
+
+```{r}
+# long format 
+df.gather <- df %>% gather(key = "Time", value = "Polyps", Day_00:Day_27)
+
+# separate the days of experiment out and only keep the number of the day
+df <- separate(data = df.gather, col = Time, into = c(NA,'Day'), sep = '_')
+
+# reformat number of day to integer
+df$Day <- as.integer(df$Day)
+
+# Make UVA and UVB factors
+df$UVA <- as.factor(df$UVA)
+df$UVB <- as.factor(df$UVB)
+
+knitr::kable(head(df))
+
+```
+
+**Data analysis**  
+```{r}
+interaction <- aov(WBR ~ UVA * UVB, data = df)
+
+plot(interaction)
+```
+
+Shapiro-Wilk Test of Normality. WBR departs significantly from parametric assumption of normality.
+```{r}
+plot(interaction, 2)
+
+rstatix::shapiro_test(residuals(interaction))
+```
+
+Levene's of homogeneity of variances. WBR departs significantly from parametric assumption.
+```{r}
+plot(interaction, 1)
+
+levene_test(WBR~UVA * UVB, data = df)
+```
+
+Because the data failed parametric assumption, we decided to run an non-paramentric Kruskal-Wallis Rank Sum Test. Given that there was a signficant effect, we ran Pairwise Wilcox test with a Bonferroni correction to correct for multiple comparisons.
+```{r}
+kruskal.test(WBR ~ Treatment, data = df)
+
+pairwise.wilcox.test(df$WBR, df$Treatment, p.adjust.method = "bonferroni")
+```
+
+
+We compared the relative effects of UVA and UVB on weekly budding rate using a two-way ANOVA, that included an interaction between UVA and UVB. We also created a model that considered JarID since it was a grouping factor. 
+```{r}
+interaction <- aov(WBR~UVA * UVB, data = df)
+two.way <-aov(WBR~UVA + UVB, data = df)
+blocking <- aov(WBR ~ UVA * UVB + JarID, data = df)
+```
+
+We compared the AICs of the models to see which is of best fit. 
+```{r}
+library(AICcmodavg)
+
+model.set <- list(two.way, interaction, blocking)
+model.names <- c("two.way", "interaction", "blocking")
+
+aictab(model.set, modnames = model.names)
+```
+
+```{r}
+summary(interaction)
+```
+
+A post-hoc Tukey test was used when significant differences were detected.   
+```{r}
+TukeyHSD(interaction)
+```
+
+```{r}
+summary(blocking)
+```
 
