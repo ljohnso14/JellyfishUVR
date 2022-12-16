@@ -201,11 +201,9 @@ library(tidyverse)
 ```
 
 ```{r}
-# long format 
-df.gather <- df %>% gather(key = "Time", value = "Polyps", Day_00:Day_27)
 
 # separate the days of experiment out and only keep the number of the day
-df <- separate(data = df.gather, col = Time, into = c(NA,'Day'), sep = '_')
+df <- separate(data = df, col = Time, into = c(NA,'Day'), sep = '_')
 
 # reformat number of day to integer
 df$Day <- as.integer(df$Day)
@@ -234,6 +232,7 @@ rstatix::shapiro_test(residuals(interaction))
 
 Levene's of homogeneity of variances. WBR departs significantly from parametric assumption.
 ```{r}
+library(rstatix)
 plot(interaction, 1)
 
 levene_test(WBR~UVA * UVB, data = df)
