@@ -202,12 +202,6 @@ library(tidyverse)
 
 ```{r}
 
-# separate the days of experiment out and only keep the number of the day
-df <- separate(data = df, col = Time, into = c(NA,'Day'), sep = '_')
-
-# reformat number of day to integer
-df$Day <- as.integer(df$Day)
-
 # Make UVA and UVB factors
 df$UVA <- as.factor(df$UVA)
 df$UVB <- as.factor(df$UVB)
